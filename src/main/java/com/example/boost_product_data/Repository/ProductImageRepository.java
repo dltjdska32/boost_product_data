@@ -1,12 +1,15 @@
-package com.example.boost_product_data.domain.Repository;
+package com.example.boost_product_data.Repository;
 
-import com.space.munova.product.domain.ProductImage;
-import com.space.munova.product.domain.enums.ProductImageType;
+
+import com.example.boost_product_data.domain.ProductImage;
+import com.example.boost_product_data.domain.enums.ProductImageType;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 
+import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 public interface ProductImageRepository extends JpaRepository<ProductImage, Long>  {
@@ -57,4 +60,9 @@ public interface ProductImageRepository extends JpaRepository<ProductImage, Long
             "AND pi.product.id = :productId " +
             "AND pi.isDeleted = false")
     List<String> findImgUrlsByIdsAndProductId(List<Long> imgIds, Long productId);
+
+    List<ProductImage> findTop1000ByOrderByIdAsc();
+
+
+    List<ProductImage> findByIdBetween(long l, long l1);
 }

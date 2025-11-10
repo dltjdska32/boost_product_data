@@ -1,7 +1,8 @@
 package com.example.boost_product_data.domain;
 
 
-import com.space.munova.core.entity.BaseEntity;
+
+import com.example.boost_product_data.common.BaseEntity;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.ColumnDefault;
@@ -15,7 +16,7 @@ import org.hibernate.annotations.ColumnDefault;
 public class ProductOptionMapping extends BaseEntity {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    // @GeneratedValue 제거: 수동 ID 할당을 위해 제거
     @Column(name = "product_option_mapping_id")
     private Long id;
 
@@ -30,6 +31,17 @@ public class ProductOptionMapping extends BaseEntity {
     @ColumnDefault("0")
     private boolean isDeleted;
 
+    @Override
+    public Long getId() {
+        return this.id;
+    }
+
+    @Override
+    public boolean isNew() {
+        // createdAt이 null이면 새 엔티티로 인식
+        return getCreatedAt() == null;
+    }
+
     public static ProductOptionMapping createDefaultProductOptionMapping(Option option, ProductDetail productDetail) {
 
         return ProductOptionMapping.builder()
@@ -38,4 +50,8 @@ public class ProductOptionMapping extends BaseEntity {
                 .build();
     }
 
+    public void setMappingId(Long id) {
+        this.id = id;
+        markAsNew(); // 수동 ID 할당 시 새 엔티티로 인식하도록 설정
+    }
 }

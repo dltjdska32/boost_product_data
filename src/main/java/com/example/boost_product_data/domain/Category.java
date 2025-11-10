@@ -1,9 +1,8 @@
 package com.example.boost_product_data.domain;
 
 
-import com.space.munova.core.entity.BaseEntity;
-import com.space.munova.product.domain.enums.ProductCategory;
-import com.space.munova.product.infra.converter.ProductCategoryConverter;
+import com.example.boost_product_data.common.BaseEntity;
+import com.example.boost_product_data.domain.enums.ProductCategory;
 import jakarta.annotation.Nullable;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
@@ -28,7 +27,7 @@ public class Category extends BaseEntity {
     @JoinColumn(name = "ref_product_category_id", foreignKey = @ForeignKey(ConstraintMode.NO_CONSTRAINT))
     private Category refCategory;
 
-    @Convert(converter = ProductCategoryConverter.class)
+    @Enumerated(EnumType.STRING)
     private ProductCategory categoryType;
 
     private String categoryName;

@@ -1,7 +1,7 @@
-package com.example.boost_product_data.domain.Repository;
+package com.example.boost_product_data.Repository;
 
-import com.space.munova.product.application.dto.ProductOptionInfoDto;
-import com.space.munova.product.domain.ProductDetail;
+
+import com.example.boost_product_data.domain.ProductDetail;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
@@ -13,17 +13,6 @@ import java.util.Optional;
 
 public interface ProductDetailRepository extends JpaRepository<ProductDetail, Long>, ProductDetailRepositoryCustom {
 
-    @Query("SELECT new com.space.munova.product.application.dto.ProductOptionInfoDto(o.id, pd.id, o.optionType, o.optionName,  pd.quantity) " +
-            "FROM Product p " +
-            "JOIN ProductDetail pd " +
-            "ON p.id = pd.product.id " +
-            "LEFT JOIN ProductOptionMapping pom " +
-            "ON pd.id = pom.productDetail.id " +
-            "LEFT JOIN Option o " +
-            "ON o.id = pom.option.id " +
-            "WHERE p.id = :productId " +
-            "AND pd.isDeleted = false ")
-    List<ProductOptionInfoDto> findProductDetailAndOptionsByProductId(Long productId);
 
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("UPDATE ProductDetail pd " +

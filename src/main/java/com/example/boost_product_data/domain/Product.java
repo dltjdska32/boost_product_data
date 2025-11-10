@@ -1,8 +1,9 @@
     package com.example.boost_product_data.domain;
 
 
-    import com.space.munova.core.entity.BaseEntity;
-    import com.space.munova.member.entity.Member;
+
+
+    import com.example.boost_product_data.common.BaseEntity;
     import jakarta.persistence.*;
     import lombok.*;
     import org.hibernate.annotations.ColumnDefault;
@@ -18,7 +19,7 @@
     @AllArgsConstructor
     public class Product extends BaseEntity {
         @Id
-        @GeneratedValue(strategy = GenerationType.IDENTITY)
+        // @GeneratedValue 제거: 수동 ID 할당을 위해 제거
         @Column(name = "product_id")
         private Long id;
         private String info;
@@ -62,6 +63,18 @@
         @Builder.Default
         private List<ProductDetail> productDetails = new ArrayList<>();
 
+        @Override
+        public Long getId() {
+            return this.id;
+        }
+
+        @Override
+        public boolean isNew() {
+            // createdAt이 null이면 새 엔티티로 인식
+            // 이렇게 하면 수동 ID 할당 시에도 새 엔티티로 인식됨
+            return getCreatedAt() == null;
+        }
+
         public static Product createDefaultProduct(String name,
                                                    String info,
                                                    Long price,
@@ -95,6 +108,10 @@
                 throw new IllegalArgumentException("member cannot be null");
             }
 
+            if(name.length() > 60) {
+                name = name.substring(0, 60);
+            }
+
             return Product.builder()
                     .brand(brand)
                     .info(info)
@@ -105,6 +122,10 @@
                     .build();
         }
 
+        public void setProductId(Long productId) {
+            this.id = productId;
+            markAsNew(); // 수동 ID 할당 시 새 엔티티로 인식하도록 설정
+        }
 
         public void updateProduct(String name,
                                   String info,
@@ -121,6 +142,10 @@
         /// 상품 논리적 제거
         public void deleteProduct() {
             this.isDeleted = true;
+        }
+
+        public void changeName(String option, String category, String base) {
+
         }
 
         /// 좋아요 감소

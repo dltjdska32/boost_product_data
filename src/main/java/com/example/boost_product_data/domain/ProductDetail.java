@@ -1,8 +1,7 @@
 package com.example.boost_product_data.domain;
 
 
-import com.space.munova.core.entity.BaseEntity;
-import com.space.munova.product.application.exception.ProductDetailException;
+import com.example.boost_product_data.common.BaseEntity;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.ColumnDefault;
@@ -18,7 +17,7 @@ import java.util.List;
 @AllArgsConstructor
 public class ProductDetail extends BaseEntity {
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    // @GeneratedValue 제거: 수동 ID 할당을 위해 제거
     @Column(name = "product_detail_id")
     private Long id;
 
@@ -34,6 +33,17 @@ public class ProductDetail extends BaseEntity {
     @OneToMany(mappedBy = "productDetail", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
     private List<ProductOptionMapping>  optionMappings = new ArrayList<>();
+
+    @Override
+    public Long getId() {
+        return this.id;
+    }
+
+    @Override
+    public boolean isNew() {
+        // createdAt이 null이면 새 엔티티로 인식
+        return getCreatedAt() == null;
+    }
 
     public static ProductDetail createDefaultProductDetail(Product product, Integer quantity) {
 
@@ -53,11 +63,9 @@ public class ProductDetail extends BaseEntity {
                 .build();
     }
 
-    public void deductStock(int quantity) {
-        if (this.quantity < quantity) {
-            throw ProductDetailException.stockInsufficientException("재고 차감 오류: 재고가 부족합니다.");
-        }
-        this.quantity -= quantity;
+    public void setProductDetailId (Long productDetailId) {
+        this.id = productDetailId;
+        markAsNew(); // 수동 ID 할당 시 새 엔티티로 인식하도록 설정
     }
 
     public void restoreStock(int quantity) {

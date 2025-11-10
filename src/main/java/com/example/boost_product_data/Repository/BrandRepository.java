@@ -1,6 +1,7 @@
-package com.example.boost_product_data.domain.Repository;
+package com.example.boost_product_data.Repository;
 
-import com.space.munova.product.domain.Brand;
+
+import com.example.boost_product_data.domain.Brand;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 

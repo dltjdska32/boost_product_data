@@ -1,7 +1,8 @@
-package com.example.boost_product_data.domain.Repository;
+package com.example.boost_product_data.Repository;
 
-import com.space.munova.product.domain.Option;
-import com.space.munova.product.domain.enums.OptionCategory;
+
+import com.example.boost_product_data.domain.Option;
+import com.example.boost_product_data.domain.enums.OptionCategory;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.Optional;

@@ -1,11 +1,15 @@
 package com.example.boost_product_data.domain;
 
-import com.space.munova.core.entity.BaseEntity;
+
+import com.example.boost_product_data.common.BaseEntity;
+import com.fasterxml.jackson.databind.ser.Serializers;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+
+import java.io.Serializable;
 
 @Entity
 @Getter

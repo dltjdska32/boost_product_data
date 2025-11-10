@@ -1,7 +1,6 @@
 package com.example.boost_product_data.domain;
 
-import com.space.munova.core.entity.BaseEntity;
-import com.space.munova.member.entity.Member;
+import com.example.boost_product_data.common.BaseEntity;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.ColumnDefault;

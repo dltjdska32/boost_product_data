@@ -1,9 +1,8 @@
 package com.example.boost_product_data.domain;
 
 
-import com.space.munova.core.entity.BaseEntity;
-import com.space.munova.product.domain.enums.OptionCategory;
-import com.space.munova.product.infra.converter.OptionConverter;
+import com.example.boost_product_data.common.BaseEntity;
+import com.example.boost_product_data.domain.enums.OptionCategory;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -20,7 +19,7 @@ public class Option extends BaseEntity {
     @Column(name = "product_option_id")
     private Long id;
 
-    @Convert(converter = OptionConverter.class)
+    @Enumerated(EnumType.STRING)
     private OptionCategory optionType;
 
     private String optionName;

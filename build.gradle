@@ -34,6 +34,24 @@ dependencies {
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testImplementation 'io.projectreactor:reactor-test'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+
+    runtimeOnly 'com.mysql:mysql-connector-j'
+
+    //  스프링 배치
+    implementation 'org.springframework.boot:spring-boot-starter-batch'
+
+    //  Redis (ID 생성기 + 분산 락 저장소)
+    implementation 'org.springframework.boot:spring-boot-starter-data-redis'
+
+    //  ShedLock (분산 락 라이브러리)
+    implementation 'net.javacrumbs.shedlock:shedlock-spring:5.14.0' // (버전은 최신 확인)
+    implementation 'net.javacrumbs.shedlock:shedlock-provider-redis-spring:5.14.0'
+
+
+    // 페이커
+    implementation('com.github.javafaker:javafaker:1.0.2') {
+        exclude group: 'org.yaml', module: 'snakeyaml'
+    }
 }
 
 tasks.named('test') {

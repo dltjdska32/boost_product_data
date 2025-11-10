@@ -2,9 +2,9 @@ package com.example.boost_product_data.domain;
 
 
 
-import com.space.munova.core.entity.BaseEntity;
-import com.space.munova.product.domain.enums.ProductImageType;
-import com.space.munova.product.infra.converter.ProductImageTypeConverter;
+
+import com.example.boost_product_data.common.BaseEntity;
+import com.example.boost_product_data.domain.enums.ProductImageType;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.ColumnDefault;
@@ -18,11 +18,11 @@ import org.hibernate.annotations.ColumnDefault;
 public class ProductImage extends BaseEntity {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    // @GeneratedValue 제거: 수동 ID 할당을 위해 제거
     @Column(name = "product_image_id")
     private Long id;
 
-    @Convert(converter = ProductImageTypeConverter.class)
+    @Enumerated(EnumType.STRING)
     private ProductImageType imageType;
 
     private String imgUrl;
@@ -34,10 +34,20 @@ public class ProductImage extends BaseEntity {
     @JoinColumn(name = "product_id", foreignKey = @ForeignKey(ConstraintMode.NO_CONSTRAINT))
     private Product product;
 
+    @Override
+    public Long getId() {
+        return this.id;
+    }
+
+    @Override
+    public boolean isNew() {
+        // createdAt이 null이면 새 엔티티로 인식
+        return getCreatedAt() == null;
+    }
 
     public static ProductImage createDefaultProductImage(ProductImageType imageType,
-                                                  String imgUrl,
-                                                  Product product) {
+                                                         String imgUrl,
+                                                         Product product) {
         return ProductImage.builder()
                 .imageType(imageType)
                 .imgUrl(imgUrl)
@@ -51,5 +61,11 @@ public class ProductImage extends BaseEntity {
 
     public void updateProductImage(String imagUrl) {
         this.imgUrl = imgUrl;
+    }
+
+
+    public void setImageId(Long id) {
+        this.id = id;
+        markAsNew(); // 수동 ID 할당 시 새 엔티티로 인식하도록 설정
     }
 }
