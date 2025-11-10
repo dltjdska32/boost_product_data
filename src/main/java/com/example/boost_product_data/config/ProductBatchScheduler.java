@@ -21,17 +21,17 @@ public class ProductBatchScheduler {
                                          /// **메소드 이름(createProductsJob)**을 그
                                          ///  빈의 **고유 ID(이름)**로 사용합니다.
 
-    @Scheduled(cron = "0 */1 * * * *")
-    @SchedulerLock(
-            name = "createProductJobLock", // 락 이름 (고유해야 함)
-            lockAtMostFor = "10m",  // 최대 10분간 락 유지 (Job이 10분 이상 걸리면 강제 해제)
-            lockAtLeastFor = "30s" // 최소 30초간 락 유지 (Job이 5초 만에 끝나도 30초간은 락 유지)
-    )
+    @Scheduled(fixedDelay = 1000)  ///  이전작업 시작 1초후 다시시작.
+//    @SchedulerLock(
+//            name = "createProductJobLock", // 락 이름 (고유해야 함)
+//            lockAtMostFor = "1m",  // 최대 10분간 락 유지 (Job이 10분 이상 걸리면 강제 해제)
+//            lockAtLeastFor = "32s" // 최소 30초간 락 유지 (Job이 5초 만에 끝나도 30초간은 락 유지)
+//    )
     public void runJob() {
         try{
             log.info("start scheduled job");
             JobParameters jobParameters = new JobParametersBuilder()
-                    .addLong("totalItems",5000L)
+                    .addLong("totalItems",50000L)
                     .addString("runtime", String.valueOf(System.currentTimeMillis()))
                     .toJobParameters();
 

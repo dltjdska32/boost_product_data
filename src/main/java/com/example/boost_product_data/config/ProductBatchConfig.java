@@ -22,7 +22,9 @@
     import org.springframework.beans.factory.annotation.Value;
     import org.springframework.context.annotation.Bean;
     import org.springframework.context.annotation.Configuration;
+    import org.springframework.core.task.TaskExecutor;
     import org.springframework.data.redis.core.RedisTemplate;
+    import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
     import org.springframework.transaction.PlatformTransactionManager;
 
     import java.util.ArrayList;
@@ -47,6 +49,20 @@
         private final CategoryRepository categoryRepository;
         private final MemberRepository memberRepository;
 
+
+
+        /// 스레드 10개 생성
+        @Bean
+        public TaskExecutor batchTaskExecutor() {
+            ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+            executor.setCorePoolSize(10);  /// 사용할 스레드 갯수 10개
+            executor.setMaxPoolSize(10);   /// 풀에 있는 스레드 갯수 10개
+            executor.setThreadNamePrefix("ProductBatchTask-");
+            executor.initialize();
+            return executor;
+        }
+
+        /// 잡
         @Bean
         public Job createProductJob(JobRepository jobRepository
                 , Step createProductStep) {
@@ -56,14 +72,17 @@
                     .build();
         }
 
+
+        /// 잡 아래에 여러개의 스텝이있을수 있다.
         @Bean
         public Step createProductStep(JobRepository jobRepository
                 , PlatformTransactionManager transactionManager) {
 
             return new StepBuilder("createProductStep", jobRepository)
-                    .<Integer, Integer> chunk(100, transactionManager)
-                    .reader(countingItemReader(null))
+                    .<Integer, Integer> chunk(1000, transactionManager)   /// chunk -> 한번에 디비에 얼마만큼 크기로 쏴줄지.
+                    .reader(countingItemReader(null))  ///  아이템 리더가 호출되면 cnt 를 1증가시킴
                     .writer(productGeneratorWriter())
+                    .taskExecutor(batchTaskExecutor()) ///  설정한 스레드풀 적용.
                     .build();
         }
 
@@ -81,21 +100,31 @@
             return (Chunk<? extends Integer> chunk) -> {
                 int chunkSize = chunk.getItems().size();
 
-                /// 레디스에서 아이디 묶음 가져오기
+                /// 레디스에서 각각의 상품 아이디를 증가시킨다 청크사이즈만큼.
+                ///  오토인크리먼트 사용하지 않고 벌크 인서트를 위해 서버단에서 아이디를 설정하기위해
+                ///  실제 rdbms 의 pk 값을 미리 확보하기 위한용도.
                 Long latestProductId = redisTemplate.opsForValue().increment("product_seq", chunkSize);
-                Long latestDetailId = redisTemplate.opsForValue().increment("product_detail_seq", chunkSize * 2);
-                Long latestOptionMappingId = redisTemplate.opsForValue().increment("product_option_seq", chunkSize * 4);
+                Long latestDetailId = redisTemplate.opsForValue().increment("product_detail_seq", chunkSize * 2);  /// 상품한개당 2개의 디테일
+                Long latestOptionMappingId = redisTemplate.opsForValue().increment("product_option_seq", chunkSize * 4); ///디테일한개당 2개의 옵션
                 Long latestImageId = redisTemplate.opsForValue().increment("image_seq", chunkSize);
-                
+
+                ///  현재 mysql실제 디비에 저장된 pk값
                 Long curImageId = latestImageId - chunkSize + 1;
                 Long curProductId = latestProductId - chunkSize + 1;
                 Long curDetailId = latestDetailId - (chunkSize * 2) + 1;
                 Long curOptionMappingId = latestOptionMappingId - (chunkSize * 4) + 1;
 
+
+                ///  저장할 아이템 리스트
                 List<Product> productToSave = new ArrayList<>();
                 List<ProductImage> productImageToSave = new ArrayList<>();
                 List<ProductDetail> productDetailToSave = new ArrayList<>();
                 List<ProductOptionMapping> productOptionMappingToSave = new ArrayList<>();
+
+                ///  common객체에 저장된 엔터티들의 값들은 트랜잭션이 이미 끝난 상태이기 때문에 Detached상태임
+                ///  현재 스텝 범위에 있는 영속성 컨택스트에 올라가 있지않다.
+                ///  상품생성시 필요한 객체들을 껍대기객체 (참조객체) 로 만들어 저장한다.
+                ///  -> 따로 상품 100개를 만들때마다 셀렉트를 하여 관련객체를 조회할경우 조회 비용이 들기때문에 가짜객체만듦.
                 Long refMemberId = commonMember.getId();
                 Member refMember = memberRepository.getReferenceById(refMemberId);
 
@@ -103,7 +132,7 @@
                     int brandId = fakeService.createRandomBrandId();
                     int categoryId = fakeService.createRandomCategoryRange();
 
-                    Long rdBrandId = optionIds.get(brandId);
+                    Long rdBrandId = brandIds.get(brandId);
                     Long rdCategoryId = categoryIds.get(categoryId);
 
                     /// 해당 트랜잭션에서는 영속성 컨택스트에 브랜드, 카테고리 ,이미지, 옵션등등의 객체가 올라가지않아서
@@ -155,8 +184,9 @@
                     }
                 }
 
-                ///  생성된 상품 , 디테일 , 옵션매핑, 메인이미지 한번에 배치 인서트
-                // @GeneratedValue를 제거했으므로 saveAll() 사용 가능 (배치 인서트)
+                ///  생성된 모든 객체를 saveAll()로 한번에 DB에 배치 인서트
+                ///  saveAll() 호출 시, 영속성 컨텍스트에 100개(Chunk)의 INSERT 쿼리가 쌓이고,
+                ///  flush 될 때 JDBC 배치 기능을 사용하여 DB에 단 1번의 통신으로 대량 전송 (DB I/O 최적화)
                 productRepository.saveAll(productToSave);
                 productDetailRepository.saveAll(productDetailToSave);
                 productOptionMappingRepository.saveAll(productOptionMappingToSave);
@@ -169,7 +199,7 @@
         @StepScope
         public  ItemReader<Integer> countingItemReader(@Value("#{jobParameters[totalItems]}") Long totalItems) {
             if(totalItems == null){ ///  기본값 세팅
-                totalItems = 5000L;
+                totalItems = 50000L; /// 총 목표 갯수.
             }
 
             final long maxCnt = totalItems;
@@ -177,6 +207,7 @@
             return new ItemReader<>() {
                 private int cnt = 0;
 
+                ///  아이템리더가호출되면 cnt 증가.
                 @Override
                 public Integer read() {
                     if(cnt < maxCnt){
@@ -184,7 +215,7 @@
                         return cnt;
                     }
 
-                    return null; ///종료
+                    return null; /// cnt 가 맥스카운트에 도달하면 null반환 작업종료신호.
                 }
             };
         }

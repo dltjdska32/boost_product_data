@@ -464,7 +464,7 @@ public class FakeService {
     }
 
     public int createRandomBrandId() {
-        int id =  random.nextInt(1, 31);
+        int id =  random.nextInt(0, 30);
         return id;
     }
 
