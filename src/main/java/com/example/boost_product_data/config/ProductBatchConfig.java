@@ -26,6 +26,7 @@
     import org.springframework.data.redis.core.RedisTemplate;
     import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
     import org.springframework.transaction.PlatformTransactionManager;
+    import jakarta.persistence.EntityManager;
 
     import java.util.ArrayList;
     import java.util.List;
@@ -48,6 +49,7 @@
         private final OptionRepository optionRepository;
         private final CategoryRepository categoryRepository;
         private final MemberRepository memberRepository;
+        private final EntityManager entityManager;
 
 
 
@@ -191,6 +193,10 @@
                 productDetailRepository.saveAll(productDetailToSave);
                 productOptionMappingRepository.saveAll(productOptionMappingToSave);
                 productImageRepository.saveAll(productImageToSave);
+                
+                
+                entityManager.flush();
+                entityManager.clear();
             };
         }
 
