@@ -47,6 +47,9 @@ dependencies {
     implementation 'net.javacrumbs.shedlock:shedlock-spring:5.14.0' // (버전은 최신 확인)
     implementation 'net.javacrumbs.shedlock:shedlock-provider-redis-spring:5.14.0'
 
+    // 엘라스틱 서치 
+    implementation 'org.springframework.boot:spring-boot-starter-data-elasticsearch'
+
 
     // 페이커
     implementation('com.github.javafaker:javafaker:1.0.2') {
@@ -56,4 +59,12 @@ dependencies {
 
 tasks.named('test') {
     useJUnitPlatform()
+    // Elasticsearch, DB 연결 없이도 테스트 가능하도록 설정
+    // 실제 테스트가 필요하면 위 설정을 제거하고 Elasticsearch, DB를 실행한 후 테스트
+}
+
+// 힙메모리가계속 터져서 힙메모리를 늘림.
+// 실행명령어 ./gradlew bootRun -PjvmArgs="-Xmx4g -Xms2g"
+tasks.named('bootRun') {
+    jvmArgs = ['-Xmx4g', '-Xms2g']  // 최대 힙 4GB, 초기 힙 2GB
 }

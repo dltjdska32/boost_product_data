@@ -1,0 +1,29 @@
+{
+  "analysis": {
+    "filter": {
+      "nori_synonym": {
+        "type": "synonym",
+        "synonyms_path": "elasticsearch/synonyms.txt",
+        "expand": true
+      }
+    },
+    "analyzer": {
+      "nori": {
+        "type": "custom",
+        "tokenizer": "nori_tokenizer",
+        "decompound_mode": "mixed",
+        "filter": [
+          "nori_synonym",
+          "lowercase"
+        ]
+      }
+    },
+    "tokenizer": {
+      "nori_tokenizer": {
+        "type": "nori_tokenizer",
+        "decompound_mode": "mixed"
+      }
+    }
+  }
+}
+

@@ -6,9 +6,12 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.batch.core.Job;
 import org.springframework.batch.core.JobParameters;
 import org.springframework.batch.core.JobParametersBuilder;
+import org.springframework.batch.core.explore.JobExplorer;
 import org.springframework.batch.core.launch.JobLauncher;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
+
+import java.util.Set;
 
 @Component
 @RequiredArgsConstructor
@@ -30,7 +33,7 @@ public class ProductBatchScheduler {
         try{
             log.info("start scheduled job");
             JobParameters jobParameters = new JobParametersBuilder()
-                    .addLong("totalItems",50000L)
+                    .addLong("totalItems", 80000L) /// 목표 개수 8만개로 증가
                     .addString("runtime", String.valueOf(System.currentTimeMillis()))
                     .toJobParameters();
 
