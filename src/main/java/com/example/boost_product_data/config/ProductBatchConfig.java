@@ -27,10 +27,13 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.transaction.PlatformTransactionManager;
 import jakarta.persistence.EntityManager;
 import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.CompletableFuture;
 
-    import java.util.ArrayList;
-    import java.util.List;
-    import java.util.Map;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 
     @Configuration
     @RequiredArgsConstructor
@@ -50,6 +53,13 @@ import java.util.concurrent.ThreadPoolExecutor;
         private final MemberRepository memberRepository;
         private final EntityManager entityManager;
         private final ProductDocumentRepository productDocumentRepository; /// Elasticsearch 저장용
+        
+        /// Elasticsearch 인덱싱용 비동기 스레드 풀 (별도 스레드 풀)
+        private final ExecutorService elasticsearchIndexingExecutor = Executors.newFixedThreadPool(4, r -> {
+            Thread t = new Thread(r, "ElasticsearchIndexing-");
+            t.setDaemon(true); /// 데몬 스레드로 설정 (애플리케이션 종료 시 자동 종료)
+            return t;
+        });
 
 
 
@@ -99,29 +109,14 @@ import java.util.concurrent.ThreadPoolExecutor;
         public ItemWriter<Integer> productGeneratorWriter() {
 
             final Map<Long, ProductImage> productImage = commonEntities.getProductImage();
+            final Map<Long, Option> optionMap = commonEntities.getOptionMap();
             final List<Long> brandIds = commonEntities.rtBrandIds();
             final List<Long> categoryIds = commonEntities.rtCategoryIds();
             final List<Long> optionIds = commonEntities.rtProductOptionIds();
             final Member commonMember = commonEntities.getMember();
 
 
-            //// 현재 벌크인서트하는 청크사이즈 상품 1000 / 상품디테일 2000 / 옵션매핑 4000 / 이미지 1000 
-            /// 합 8000개.
-            /// 실제 메모리 사용량 계산:
-            /// - 객체 헤더: 각 객체당 약 16 bytes
-            /// - Product: 헤더(16) + 필드들(약 100 bytes) + String 필드들(이름/설명 각 50-200 bytes) = 약 300-500 bytes
-            /// - ProductImage: 헤더(16) + 필드들(약 50 bytes) + String(imgUrl 약 100 bytes) = 약 170 bytes
-            /// - ProductDetail: 헤더(16) + 필드들(약 50 bytes) = 약 70 bytes
-            /// - ProductOptionMapping: 헤더(16) + 필드들(약 40 bytes) = 약 60 bytes
-            /// 
-            /// 청크당 실제 메모리:
-            /// - Product 1000개: 1000 × 400 bytes = 400 KB
-            /// - ProductImage 1000개: 1000 × 170 bytes = 170 KB
-            /// - ProductDetail 2000개: 2000 × 70 bytes = 140 KB
-            /// - ProductOptionMapping 4000개: 4000 × 60 bytes = 240 KB
-            /// - 합계: 약 950 KB ~ 1 MB (String 길이에 따라 2-3MB까지 가능)
-            /// 참고: String 필드(productName, productDescription, imgUrl)는 실제 문자열 길이에 따라
-            ///       수십~수백 bytes를 추가로 사용하므로, 실제로는 청크당 약 2-3MB 정도 소요됨
+        
             return (Chunk<? extends Integer> chunk) -> {
                 int chunkSize = chunk.getItems().size();
 
@@ -146,7 +141,7 @@ import java.util.concurrent.ThreadPoolExecutor;
                 List<ProductDetail> productDetailToSave = new ArrayList<>();
                 List<ProductOptionMapping> productOptionMappingToSave = new ArrayList<>();
                 
-                /// Elasticsearch 저장을 위한 메타데이터 수집용 Map
+                /// Elasticsearch 저장을 위한 데이터 수집용 Map
                 Map<Long, String> productBrandNames = new java.util.HashMap<>();  // Product ID -> Brand Name
                 Map<Long, String> productCategoryNames = new java.util.HashMap<>();  // Product ID -> Category Name
                 Map<Long, List<String>> productOptionNames = new java.util.HashMap<>();  // Product ID -> Option Names List
@@ -202,21 +197,39 @@ import java.util.concurrent.ThreadPoolExecutor;
                     ProductImage newProductImage = ProductImage.createDefaultProductImage(ProductImageType.MAIN, imgUrl, product);
                     newProductImage.setImageId(curImageId++);
                     productImageToSave.add(newProductImage);
+                    
+                    Long beforeColorOptionId = 0L;
+                    Long beforeSizeOptionId = 0L;
 
                     for(int i = 0; i < 2; i++){
                         /// 디테일 생성
                         ProductDetail productDetail = ProductDetail.createDefaultProductDetail(product, 1000);
                         productDetail.setProductDetailId(curDetailId++);
                         productDetailToSave.add(productDetail);
-
                         Long colorOpId = optionIds.get(fakeService.createColorOptionId());
                         Long sizeOpId = optionIds.get(fakeService.createSizeOptionId());
+
+                        ///  하나의 상품아래에옵션이 안겹치도록 만듦.
+                        if(i == 0){
+                            beforeColorOptionId = colorOpId;
+                            beforeSizeOptionId = sizeOpId;
+                        } if(i == 1 && beforeColorOptionId.equals(colorOpId) && beforeSizeOptionId.equals(sizeOpId)){
+                            
+                            while(true){
+                                colorOpId = optionIds.get(fakeService.createColorOptionId());
+                                sizeOpId = optionIds.get(fakeService.createSizeOptionId());
+                                if(!beforeColorOptionId.equals(colorOpId) && !beforeSizeOptionId.equals(sizeOpId)){
+                                    break;
+                                }
+                            }
+                        }
+                      
                         Option refColorOption = optionRepository.getReferenceById(colorOpId);
                         Option refSizeOption = optionRepository.getReferenceById(sizeOpId);
                         
-                        /// Elasticsearch 저장을 위해 실제 옵션명 조회 (프록시 초기화)
-                        String colorOptionName = refColorOption.getOptionName();
-                        String sizeOptionName = refSizeOption.getOptionName();
+                        /// 엘라스틱 서치에 저장하기위한 상품정보.
+                        String colorOptionName = optionMap.get(colorOpId).getOptionName();
+                        String sizeOptionName = optionMap.get(sizeOpId).getOptionName();
 
                         /// 옵션매핑 생성
                         ProductOptionMapping colorOM = ProductOptionMapping.createDefaultProductOptionMapping(refColorOption, productDetail);
@@ -227,6 +240,7 @@ import java.util.concurrent.ThreadPoolExecutor;
                         sizeOM.setMappingId(curOptionMappingId++);
                         
                         /// Elasticsearch 저장을 위한 옵션명 수집
+                        /// 상품아이디를 가져와서 상품아이디(키) 에 매칭되는 리스트에 옵션이름들추가.
                         productOptionNames.get(currentProductId).add(colorOptionName);
                         productOptionNames.get(currentProductId).add(sizeOptionName);
                     }
@@ -244,30 +258,44 @@ import java.util.concurrent.ThreadPoolExecutor;
                 /// 총 8번의 인서트 요청
                 entityManager.flush();
                 
-                /// Elasticsearch에 상품 데이터 저장 (검색용)
-                /// Product 엔티티를 ProductDocument로 변환하여 Elasticsearch에 저장
-                try {
-                    List<ProductDocument> documentsToSave = productToSave.stream()
-                            .map(product -> {
-                                Long productId = product.getId();
-                                String brandName = productBrandNames.get(productId);
-                                String categoryName = productCategoryNames.get(productId);
-                                List<String> optionNamesList = productOptionNames.get(productId);
-                                String optionNames = optionNamesList != null && !optionNamesList.isEmpty() 
-                                        ? String.join(", ", optionNamesList.stream().distinct().toList())
-                                        : "";
-                                return ProductDocument.from(product, brandName, categoryName, optionNames);
-                            })
-                            .toList();
-                    /// Elasticsearch에 배치 저장
-                    if (!documentsToSave.isEmpty()) {
-                        productDocumentRepository.saveAll(documentsToSave);
+                /// Elasticsearch 인덱싱 비동기처리
+                /// DB 저장과 분리하여 별도 스레드에서 비동기로 처리
+                /// 실패해도 배치 작업에는 영향 없음
+                ///  란다식에 사용하기위해 상수로 지정.
+                final List<Product> productsForIndexing = new ArrayList<>(productToSave);
+                final Map<Long, String> brandNamesForIndexing = new java.util.HashMap<>(productBrandNames);
+                final Map<Long, String> categoryNamesForIndexing = new java.util.HashMap<>(productCategoryNames);
+                final Map<Long, List<String>> optionNamesForIndexing = new java.util.HashMap<>();
+                /// 새로운 변수에 다시할당.
+                productOptionNames.forEach((k, v) -> optionNamesForIndexing.put(k, new ArrayList<>(v)));
+
+                ///  비동기로 상품을 순회하면서 인덱스용객체생성.
+                CompletableFuture.runAsync(() -> {
+                    try {
+                        List<ProductDocument> documentsToSave = productsForIndexing.stream()
+                                .map(product -> {
+                                    Long productId = product.getId();
+                                    
+                                    String brandName = brandNamesForIndexing.get(productId);
+                                    String categoryName = categoryNamesForIndexing.get(productId);
+                                    List<String> optionNamesList = optionNamesForIndexing.get(productId);
+                                    String optionNames = optionNamesList != null && !optionNamesList.isEmpty() 
+                                            ? String.join(", ", optionNamesList.stream().distinct().toList())
+                                            : "";
+                                    return ProductDocument.from(product, brandName, categoryName, optionNames);
+                                })
+                                .toList();
+                        
+                        /// Elasticsearch에 배치 저장 (비동기 인덱싱)
+                        if (!documentsToSave.isEmpty()) {
+                            productDocumentRepository.saveAll(documentsToSave);
+                        }
+                    } catch (Exception e) {
+                        /// Elasticsearch 저장 실패 시 로그만 남기고 계속 진행 (DB 저장은 이미 완료됨)
+                        System.err.println("Elasticsearch 비동기 인덱싱 실패: " + e.getMessage());
+                        e.printStackTrace();
                     }
-                    documentsToSave.clear();
-                } catch (Exception e) {
-                    /// Elasticsearch 저장 실패 시 로그만 남기고 계속 진행 (DB 저장은 이미 완료됨)
-                    System.err.println("Elasticsearch 저장 실패: " + e.getMessage());
-                }
+                }, elasticsearchIndexingExecutor);
 
                 /// 영속성컨텍스트 1차캐시에 저장된 데이터를 비워준다.
                 /// 트랜잭션 매니저가 1차캐시 클리어를 안해주기 때문에 메모리에 누적되어 메모리부족현상이 발생할수
