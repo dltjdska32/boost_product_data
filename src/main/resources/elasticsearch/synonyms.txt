@@ -3,17 +3,17 @@ black,검정색,검은색,검정,까만색,까망,블랙
 white,흰색,하얀색,흰,하양,화이트,화이트색
 red,빨간색,빨강,빨갱이,레드,빨강색
 blue,파란색,파랑,파,블루,파랑색
-green,초록색,녹색,초록,그린,녹색
+green,초록색,녹색,초록,그린
 yellow,노란색,노랑,노,옐로우,노랑색
 orange,주황색,오렌지,주황
-purple,보라색,보라,퍼플,보라색
-pink,분홍색,분홍,핑크,분홍
-brown,갈색,갈,브라운,갈색
-gray,grey,회색,회,그레이,회색
-beige,베이지색,베이지,베이지색
-navy,네이비색,네이비,남색,네이비
-ivory,아이보리색,아이보리,아이보리색
-khaki,카키색,카키,카키색
+purple,보라색,보라,퍼플
+pink,분홍색,분홍,핑크
+brown,갈색,갈,브라운
+gray,grey,회색,회,그레이
+beige,베이지색,베이지
+navy,네이비색,네이비,남색
+ivory,아이보리색,아이보리
+khaki,카키색,카키
 gold,골드,금색,골든,금
 silver,실버,은색,실버색,은
 copper,구리색,코퍼,동색
@@ -33,12 +33,12 @@ amethyst,아메시스트,자수정색,자수정
 pearl,펄,펄색,진주색
 
 # 사이즈 동의어 - 일반
-xs,엑스스몰,엑스에스,엑스에스
-s,스몰,에스,에스
-m,미디엄,엠,미디엄
-l,라지,엘,라지
-xl,엑스라지,엑스엘,엑스엘
-xxl,더블엑스라지,더블엑스엘,투엑스엘,투엑스엘
+xs,엑스스몰,엑스에스
+s,스몰,에스
+m,미디엄,엠
+l,라지,엘
+xl,엑스라지,엑스엘
+xxl,더블엑스라지,더블엑스엘,투엑스엘
 xxxl,트리플엑스라지,트리플엑스엘,쓰리엑스엘
 
 # 사이즈 동의어 - 신발 사이즈 (한국/미국/유럽)
@@ -75,12 +75,12 @@ xxxl,트리플엑스라지,트리플엑스엘,쓰리엑스엘
 solid,솔리드,무지,플레인,plain
 stripe,스트라이프,줄무늬,단가라,border,보더
 check,체크,체크무늬,체커,checkered
-dot,도트,땡땡이,점무늬,polka dot,polkadot
+dot,도트,땡땡이,점무늬,"polka dot",polkadot
 
 # 패턴 동의어 - 체크 세분화
 gingham,깅엄
 tartan,타탄
-plaid,플레드,글렌,glen check
+plaid,플레드,글렌,"glen check"
 houndstooth,하운드투스,하운드투쓰
 
 # 패턴 동의어 - 프린트
@@ -88,14 +88,14 @@ floral,플로럴,꽃무늬,꽃
 paisley,페이즐리
 argyle,아가일
 camouflage,카모플라쥬,카모,밀리터리,military,camo
-animal print,애니멀 프린트,애니멀프린트
+"animal print","애니멀 프린트",애니멀프린트
 leopard,레오파드,표범무늬
 zebra,지브라,얼룩말무늬
 snake,스네이크,뱀무늬
 logo,로고플레이,로고
 graphic,그래픽
 lettering,레터링
-tie-dye,타이다이,타이다이
+"tie-dye",타이다이
 
 # 패턴 동의어 - 직조/질감/가공
 herringbone,헤링본
@@ -106,7 +106,7 @@ quilting,퀼팅
 embroidery,자수
 embossed,엠보싱
 shearling,시어링
-color block,컬러블록,컬러블럭
+"color block",컬러블록,컬러블럭
 perforated,펀칭,펀칭홀
 woven,우븐
 crochet,크로셰,크로셰트
@@ -115,22 +115,22 @@ crochet,크로셰,크로셰트
 men,남성,남자,맨즈,male
 women,여성,여자,우먼즈,female
 children,아동,어린이,키즈,kids,child
-all person,남여공용,공용,유니섹스,unisex,all gender
+"all person",남여공용,공용,유니섹스,unisex,"all gender"
 
 # 카테고리 동의어 - 신발 종류
 slippers,슬리퍼,슬리퍼스
 sandals,샌들,샌달,샌들스
-sneakers,스니커즈,스니커,운동화,운동화,스니커스
-running shoes,러닝화,러닝슈즈,런닝화,런닝슈즈,운동화
+sneakers,스니커즈,스니커,운동화,스니커스
+"running shoes",러닝화,러닝슈즈,런닝화,운동화
 loafers,로퍼,로퍼스
 boots,부츠,부츠스
 walkers,워커,워커스,워킹화,워킹슈즈
-slip on,슬립온,슬립온스,슬립-온
-chelsea boots,첼시부츠,첼시,첼시부트
-oxford shoes,옥스퍼드 슈즈,옥스퍼드,옥스퍼드신발,옥스퍼드슈즈
-winter boots,방한화,방한부츠,겨울화,겨울부츠
-rain boots,레인부츠,레인부트,우비,우비신발,장화
-aqua shoes,아쿠아슈즈,아쿠아,워터슈즈,물놀이신발,수영화
-dress shoes,드레스 신발,드레스슈즈,정장화,구두,정식구두
-high heels,하이힐,하이힐스,힐,구두,여성구두
-flat shoes,플랫슈즈,플랫,플랫신발,단화
+"slip on",슬립온,슬립온스,슬립-온
+"chelsea boots",첼시부츠,첼시,첼시부트
+"oxford shoes","옥스퍼드 슈즈",옥스퍼드,옥스퍼드신발,옥스퍼드슈즈
+"winter boots",방한화,방한부츠,겨울화,겨울부츠
+"rain boots",레인부츠,레인부트,우비,우비신발,장화
+"aqua shoes",아쿠아슈즈,아쿠아,워터슈즈,물놀이신발,수영화
+"dress shoes","드레스 신발",드레스슈즈,정장화,구두,정식구두
+"high heels",하이힐,하이힐스,힐,구두,여성구두
+"flat shoes",플랫슈즈,플랫,플랫신발,단화

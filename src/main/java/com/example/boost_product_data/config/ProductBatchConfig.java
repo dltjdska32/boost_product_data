@@ -25,11 +25,10 @@ import org.springframework.core.task.TaskExecutor;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import jakarta.persistence.EntityManager;
 import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.CompletableFuture;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -53,13 +52,6 @@ import java.util.Map;
         private final MemberRepository memberRepository;
         private final EntityManager entityManager;
         private final ProductDocumentRepository productDocumentRepository; /// Elasticsearch 저장용
-        
-        /// Elasticsearch 인덱싱용 비동기 스레드 풀 (별도 스레드 풀)
-        private final ExecutorService elasticsearchIndexingExecutor = Executors.newFixedThreadPool(4, r -> {
-            Thread t = new Thread(r, "ElasticsearchIndexing-");
-            t.setDaemon(true); /// 데몬 스레드로 설정 (애플리케이션 종료 시 자동 종료)
-            return t;
-        });
 
 
 
@@ -258,10 +250,9 @@ import java.util.Map;
                 /// 총 8번의 인서트 요청
                 entityManager.flush();
                 
-                /// Elasticsearch 인덱싱 비동기처리
-                /// DB 저장과 분리하여 별도 스레드에서 비동기로 처리
-                /// 실패해도 배치 작업에는 영향 없음
-                ///  란다식에 사용하기위해 상수로 지정.
+                /// Elasticsearch 인덱싱을 트랜잭션 커밋 후에 실행하도록 등록
+                /// DB 트랜잭션이 롤백되면 Elasticsearch 저장도 실행되지 않음
+                /// 람다식에 사용하기위해 상수로 지정.
                 final List<Product> productsForIndexing = new ArrayList<>(productToSave);
                 final Map<Long, String> brandNamesForIndexing = new java.util.HashMap<>(productBrandNames);
                 final Map<Long, String> categoryNamesForIndexing = new java.util.HashMap<>(productCategoryNames);
@@ -269,33 +260,36 @@ import java.util.Map;
                 /// 새로운 변수에 다시할당.
                 productOptionNames.forEach((k, v) -> optionNamesForIndexing.put(k, new ArrayList<>(v)));
 
-                ///  비동기로 상품을 순회하면서 인덱스용객체생성.
-                CompletableFuture.runAsync(() -> {
-                    try {
-                        List<ProductDocument> documentsToSave = productsForIndexing.stream()
-                                .map(product -> {
-                                    Long productId = product.getId();
-                                    
-                                    String brandName = brandNamesForIndexing.get(productId);
-                                    String categoryName = categoryNamesForIndexing.get(productId);
-                                    List<String> optionNamesList = optionNamesForIndexing.get(productId);
-                                    String optionNames = optionNamesList != null && !optionNamesList.isEmpty() 
-                                            ? String.join(", ", optionNamesList.stream().distinct().toList())
-                                            : "";
-                                    return ProductDocument.from(product, brandName, categoryName, optionNames);
-                                })
-                                .toList();
-                        
-                        /// Elasticsearch에 배치 저장 (비동기 인덱싱)
-                        if (!documentsToSave.isEmpty()) {
-                            productDocumentRepository.saveAll(documentsToSave);
+                /// 트랜잭션 커밋 후에만 Elasticsearch에 저장되도록 등록
+                TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                    @Override
+                    public void afterCommit() {
+                        try {
+                            List<ProductDocument> documentsToSave = productsForIndexing.stream()
+                                    .map(product -> {
+                                        Long productId = product.getId();
+                                        
+                                        String brandName = brandNamesForIndexing.get(productId);
+                                        String categoryName = categoryNamesForIndexing.get(productId);
+                                        List<String> optionNamesList = optionNamesForIndexing.get(productId);
+                                        String optionNames = optionNamesList != null && !optionNamesList.isEmpty() 
+                                                ? String.join(", ", optionNamesList.stream().distinct().toList())
+                                                : "";
+                                        return ProductDocument.from(product, brandName, categoryName, optionNames);
+                                    })
+                                    .toList();
+                            
+                            /// Elasticsearch에 배치 저장 (트랜잭션 커밋 후 실행)
+                            if (!documentsToSave.isEmpty()) {
+                                productDocumentRepository.saveAll(documentsToSave);
+                            }
+                        } catch (Exception e) {
+                            /// Elasticsearch 저장 실패 시 로그만 남기고 계속 진행
+                            System.err.println("Elasticsearch 인덱싱 실패: " + e.getMessage());
+                            e.printStackTrace();
                         }
-                    } catch (Exception e) {
-                        /// Elasticsearch 저장 실패 시 로그만 남기고 계속 진행 (DB 저장은 이미 완료됨)
-                        System.err.println("Elasticsearch 비동기 인덱싱 실패: " + e.getMessage());
-                        e.printStackTrace();
                     }
-                }, elasticsearchIndexingExecutor);
+                });
 
                 /// 영속성컨텍스트 1차캐시에 저장된 데이터를 비워준다.
                 /// 트랜잭션 매니저가 1차캐시 클리어를 안해주기 때문에 메모리에 누적되어 메모리부족현상이 발생할수
